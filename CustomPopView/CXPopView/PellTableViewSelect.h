@@ -11,7 +11,10 @@
 
 #import <UIKit/UIKit.h>
 
-
+typedef NS_ENUM(NSInteger,PopDirection) {
+    PopDirectionLeft = 0,
+    PopDirectionRight = 1,
+};
 @interface PellTableViewSelect : UIView
 /**
  *  创建一个弹出下拉控件
@@ -23,8 +26,9 @@
  *  @param offsetY    距离上边界距离
  *   高度根据selece
  */
-+ (void)addTableViewWithWindowBounds:(CGSize)bounds
-                             position:(CGPoint)position
+@property (nonatomic)PopDirection direction;
++ (void)addTableViewWithWindowFrame:(CGRect)frame
+                             direction:(PopDirection)direction
                           selectData:(NSArray *)selectData
                               images:(NSArray *)images
                               action:(void(^)(NSInteger index))action

@@ -18,23 +18,25 @@
 @property (nonatomic,copy) NSArray *selectData;
 @property (nonatomic,copy) void(^action)(NSInteger index);
 @property (nonatomic,copy) NSArray * imagesData;
+@property (nonatomic,strong)UITableView * tableView;
+@property (nonatomic)CGRect saveFrame;
 @end
 
 
 
 PellTableViewSelect * backgroundView;
-UITableView * tableView;
+//UITableView * tableView;
 
 @implementation PellTableViewSelect
 
 
 
-+ (void)addTableViewWithWindowBounds:(CGSize)bounds
-                            position:(CGPoint)position
-                          selectData:(NSArray *)selectData
-                              images:(NSArray *)images
-                              action:(void(^)(NSInteger index))action
-                            animated:(BOOL)animate
++ (void)addTableViewWithWindowFrame:(CGRect)frame
+                          direction:(PopDirection)direction
+                         selectData:(NSArray *)selectData
+                             images:(NSArray *)images
+                             action:(void(^)(NSInteger index))action
+                           animated:(BOOL)animate
 {
     if (backgroundView != nil) {
         [PellTableViewSelect hiden];
@@ -45,21 +47,40 @@ UITableView * tableView;
     backgroundView.action = action;
     backgroundView.imagesData = images ;
     backgroundView.selectData = selectData;
+    backgroundView.saveFrame = frame;
     backgroundView.backgroundColor = [UIColor colorWithHue:0
                                                 saturation:0
                                                 brightness:0 alpha:0.1];
     [win addSubview:backgroundView];
     
-    tableView = [[UITableView alloc] init];
-    if (selectData.count <= 4) {
-        tableView.bounds = CGRectMake(0, 0, bounds.width,40 * selectData.count );
-    }else{
-         tableView.bounds = CGRectMake(0, 0, bounds.width, 150 );
+    backgroundView.tableView = [[UITableView alloc] init];
+//    CGPoint position;
+    CGPoint anchorPoint;
+    switch (direction) {
+        case PopDirectionLeft:
+        {
+            anchorPoint = CGPointMake(0, 0);
+            backgroundView.direction = PopDirectionLeft;
+        }
+            break;
+        case PopDirectionRight:
+        {
+            anchorPoint = CGPointMake(1.0, 0);
+            backgroundView.direction = PopDirectionRight;
+        }
+            break;
+        default:
+            break;
     }
        // 确定position位置
-    tableView.layer.position = position;
+//    tableView.layer.position = position;
     // 确定定点位置
-     tableView.layer.anchorPoint = CGPointMake(1.0, 0);
+    backgroundView.tableView.layer.anchorPoint = anchorPoint;
+    if (selectData.count <= 4) {
+        backgroundView.tableView.frame = CGRectMake(frame.origin.x, frame.origin.y, frame.size.width,40 * selectData.count );
+    }else{
+        backgroundView.tableView.frame = CGRectMake(frame.origin.x, frame.origin.y, frame.size.width, 150 );
+    }
     // 可以得到frmae的大小了
     /*
       附上position 与 定点位置的理解公式
@@ -67,20 +88,22 @@ UITableView * tableView;
      frame.origin.x = position.x - anchorPoint.x * bounds.size.width；
      frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
      */
-    tableView.dataSource = backgroundView;
-    tableView.delegate = backgroundView;
-    tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    tableView.layer.cornerRadius = 10.0f;
-    tableView.rowHeight = 40;
-    [win addSubview:tableView];
-    tableView.transform =CGAffineTransformMakeScale(0.0001, 0.0001);
+    backgroundView.tableView.dataSource = backgroundView;
+    backgroundView.tableView.delegate = backgroundView;
+    backgroundView.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    backgroundView.tableView.layer.cornerRadius = 10.0f;
+    backgroundView.tableView.rowHeight = 40;
+    [win addSubview:backgroundView.tableView];
+    backgroundView.tableView.transform =CGAffineTransformMakeScale(0.0001, 0.0001);
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapBackgroundClick)];
     [backgroundView addGestureRecognizer:tap];
+    [backgroundView setNeedsDisplay];
     if (animate == YES) {
+        
 //        backgroundView.alpha = 0;
         [UIView animateWithDuration:0.3 animations:^{
 //            backgroundView.alpha = 0.5;
-           tableView.transform = CGAffineTransformMakeScale(1.0, 1.0);
+           backgroundView.tableView.transform = CGAffineTransformMakeScale(1.0, 1.0);
         }];
     }
 }
@@ -93,11 +116,11 @@ UITableView * tableView;
     if (backgroundView != nil) {
         
         [UIView animateWithDuration:0.3 animations:^{
-            tableView.transform = CGAffineTransformMakeScale(0.000001, 0.0001);
+            backgroundView.tableView.transform = CGAffineTransformMakeScale(0.000001, 0.0001);
         } completion:^(BOOL finished) {
             [backgroundView removeFromSuperview];
-            [tableView removeFromSuperview];
-            tableView = nil;
+            [backgroundView.tableView removeFromSuperview];
+            backgroundView.tableView = nil;
             backgroundView = nil;
         }];
     }
@@ -132,11 +155,7 @@ UITableView * tableView;
 
 #pragma mark 绘制三角形
 - (void)drawRect:(CGRect)rect
-
 {
-    
-    
-    //    [colors[serie] setFill];
     // 设置背景色
     [[UIColor whiteColor] set];
     //拿到当前视图准备好的画板
@@ -146,16 +165,23 @@ UITableView * tableView;
     //利用path进行绘制三角形
     
     CGContextBeginPath(context);//标记
-    CGPoint location = tableView.layer.position;
+    CGPoint location ;
+    switch (backgroundView.direction) {
+        case PopDirectionLeft:
+            location = backgroundView.saveFrame.origin;
+            break;
+        case PopDirectionRight:
+            location = CGPointMake(backgroundView.saveFrame.origin.x + backgroundView.saveFrame.size.width - TopToView * 5, backgroundView.saveFrame.origin.y);
+            break;
+        default:
+            break;
+    }
     CGContextMoveToPoint(context,
-                         location.x -  LeftView - 10, location.y);//设置起点
-    
+                         location.x +  LeftView + 10, location.y);//设置起点
     CGContextAddLineToPoint(context,
-                            location.x - 2*LeftView - 10 ,  location.y - TopToView);
-    
+                            location.x + 2*LeftView + 10 ,  location.y - TopToView);
     CGContextAddLineToPoint(context,
-                            location.x - TopToView * 3 - 10, location.y);
-    
+                            location.x + TopToView * 3 + 10, location.y);
     CGContextClosePath(context);//路径结束标志，不写默认封闭
     
     [[UIColor whiteColor] setFill];  //设置填充色
